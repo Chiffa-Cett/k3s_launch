@@ -1,0 +1,36 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# SSH keys and credentials
+*.pem
+*.key
+id_rsa
+id_ed25519
+*.kubeconfig
+kubeconfig
+k3s.yaml
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.bak
+
+# Ansible
+*.retry

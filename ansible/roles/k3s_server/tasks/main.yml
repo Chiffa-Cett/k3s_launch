@@ -1,0 +1,31 @@
+---
+# Install the specified K3s version on the server.
+
+- name: Install K3s server
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sfL https://get.k3s.io | sh -s - server
+  args:
+    executable: /bin/bash
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  become: true
+
+# Ensure K3s service is enabled and running.
+
+- name: Ensure K3s server is running
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: true
+  become: true
+
+# Wait until Kubernetes API port becomes available.
+
+- name: Wait for Kubernetes API
+  ansible.builtin.wait_for:
+    host: "{{ k3s_private_ip }}"
+    port: 6443
+    timeout: 180
+  become: false

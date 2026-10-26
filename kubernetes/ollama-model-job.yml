@@ -1,0 +1,40 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-pull-model
+  namespace: ai
+
+spec:
+  backoffLimit: 3
+
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: pull-model
+          image: curlimages/curl:8.12.1
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              echo "Waiting for Ollama API..."
+
+              until curl -fsS \
+                http://ollama:11434/api/tags > /dev/null; do
+                sleep 5
+              done
+
+              echo "Downloading qwen2.5:0.5b..."
+
+              curl --fail-with-body -sS \
+                --max-time 1800 \
+                http://ollama:11434/api/pull \
+                -H "Content-Type: application/json" \
+                -d '{"model":"qwen2.5:0.5b","stream":false}'
+
+              echo "Model download completed."

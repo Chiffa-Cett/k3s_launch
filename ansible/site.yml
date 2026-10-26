@@ -1,0 +1,78 @@
+---
+# Play 1: устанавливаем управляющий узел K3s.
+
+- name: Configure K3s Server
+  hosts: k3s_server
+  gather_facts: true
+
+  roles:
+    - k3s_server
+
+  tasks:
+    - name: Read K3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      become: true
+      register: k3s_token_result
+      no_log: true
+
+    - name: Store K3s node token
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_result.content | b64decode | trim }}"
+      no_log: true
+
+
+# Play 2: подключаем три Worker к кластеру.
+
+- name: Configure K3s Workers
+  hosts: k3s_agents
+  gather_facts: true
+
+  roles:
+    - k3s_agent
+
+
+# Play 3: назначаем метки для размещения приложений.
+
+- name: Configure Kubernetes node labels
+  hosts: k3s_server
+  gather_facts: false
+
+  tasks:
+    # Ждём, пока первый Worker станет Ready.
+    - name: Wait for Ollama worker to become Ready
+      ansible.builtin.command:
+        cmd: k3s kubectl wait --for=condition=Ready node/k3s-worker-1 --timeout=15s
+      register: ollama_worker_check
+      until: ollama_worker_check.rc == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+      become: true
+
+    # Назначаем метку первому Worker.
+    - name: Label first worker for Ollama
+      ansible.builtin.command:
+        cmd: k3s kubectl label node k3s-worker-1 workload=ollama --overwrite
+      register: ollama_label_result
+      changed_when: "'not labeled' not in ollama_label_result.stdout"
+      become: true
+
+    # Ждём, пока второй Worker станет Ready.
+    - name: Wait for OpenWebUI worker to become Ready
+      ansible.builtin.command:
+        cmd: k3s kubectl wait --for=condition=Ready node/k3s-worker-2 --timeout=15s
+      register: openwebui_worker_check
+      until: openwebui_worker_check.rc == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+      become: true
+
+    # Назначаем метку второму Worker.
+    - name: Label second worker for OpenWebUI
+      ansible.builtin.command:
+        cmd: k3s kubectl label node k3s-worker-2 workload=openwebui --overwrite
+      register: openwebui_label_result
+      changed_when: "'not labeled' not in openwebui_label_result.stdout"
+      become: true

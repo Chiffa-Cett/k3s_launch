@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwebui
+  namespace: ai
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: openwebui
+
+  template:
+    metadata:
+      labels:
+        app: openwebui
+
+    spec:
+      nodeSelector:
+        workload: openwebui
+
+      containers:
+        - name: openwebui
+          image: ghcr.io/open-webui/open-webui:v0.12.2
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          env:
+            - name: OLLAMA_BASE_URL
+              value: "http://ollama.ai.svc.cluster.local:11434"
+
+            - name: WEBUI_AUTH
+              value: "True"
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+
+          volumeMounts:
+            - name: openwebui-data
+              mountPath: /app/backend/data
+
+      volumes:
+        - name: openwebui-data
+          persistentVolumeClaim:
+            claimName: openwebui-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openwebui
+  namespace: ai
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: openwebui
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
